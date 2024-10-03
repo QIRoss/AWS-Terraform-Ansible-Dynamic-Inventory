@@ -1,0 +1,63 @@
+---
+- name: Common setup for all environments
+  hosts: all
+  become: true
+
+  tasks:
+
+    - name: Update apt package list
+      apt:
+        update_cache: yes
+
+    - name: Install required packages
+      apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - software-properties-common
+        state: present
+
+    - name: Add Docker GPG key
+      apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+
+    - name: Add Docker repository
+      apt_repository:
+        repo: deb https://download.docker.com/linux/ubuntu focal stable
+        state: present
+
+    - name: Install Docker
+      apt:
+        name: docker-ce
+        state: present
+
+    - name: Start Docker service
+      service:
+        name: docker
+        state: started
+        enabled: yes
+
+    - name: Ensure docker group exists
+      group:
+        name: docker
+        state: present
+
+    - name: Add user to the docker group
+      user:
+        name: "{{ ansible_user }}"
+        groups: docker
+        append: yes
+
+    - name: Pull the FastAPI Docker image
+      command: docker pull qiross/fastapi-hello-world:latest
+
+    - name: Run FastAPI container on port 80
+      docker_container:
+        name: fastapi-hello-world
+        image: qiross/fastapi-hello-world:latest
+        state: started
+        restart_policy: always
+        ports:
+          - "80:80"
